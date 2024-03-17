@@ -4,55 +4,113 @@ import platform
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, Literal, Optional, Union
 
 import numpy as np
 import spikeinterface.preprocessing as spre
 from numcodecs import Blosc
-from numpy import memmap
+from pydantic import Field
 from spikeinterface import extractors as se
 from wavpack_numcodecs import WavPack
 
-from aind_data_transformation.core import TransformationJob
+from aind_data_transformation.core import GenericEtl, JobResponse
 from aind_data_transformation.ephys.models import (
     CompressorName,
+    ReaderName,
     RecordingBlockPrefixes,
 )
 from aind_data_transformation.ephys.npopto_correction import (
     correct_np_opto_electrode_locations,
 )
-from aind_data_transformation.models import (
-    JobResponse,
-    TransformationJobConfig,
-)
+from aind_data_transformation.models import TransformationJobConfig
 
 
-class EphysCompressionJob(TransformationJob):
+class EphysJobSettings(TransformationJobConfig):
 
-    _READER_NAME = "openephys"
+    # reader settings
+    reader_name: ReaderName = Field(
+        default=ReaderName.OPENEPHYS, description="Name of reader to use."
+    )
+    # Clip settings
+    clip_n_frames: int = Field(
+        default=100,
+        description="Number of frames to clip the data.",
+        title="Clip N Frames",
+    )
+    # Compress settings
+    random_seed: Optional[int] = 0
+    compress_write_output_format: Literal["zarr"] = Field(
+        default="zarr",
+        description=(
+            "Output format for compression. Currently, only zarr supported."
+        ),
+        title="Write Output Format",
+    )
+    compress_max_windows_filename_len: int = Field(
+        default=150,
+        description=(
+            "Windows OS max filename length is 256. The zarr write will "
+            "raise an error if it detects that the destination directory has "
+            "a long name."
+        ),
+        title="Compress Max Windows Filename Len",
+    )
+    compressor_name: CompressorName = Field(
+        default=CompressorName.WAVPACK,
+        description="Type of compressor to use.",
+        title="Compressor Name.",
+    )
+    # It will be safer if these kwargs fields were objects with known schemas
+    compressor_kwargs: dict = Field(
+        default={"level": 3},
+        description="Arguments to be used for the compressor.",
+        title="Compressor Kwargs",
+    )
+    compress_job_save_kwargs: dict = Field(
+        default={"n_jobs": -1},  # -1 to use all available cpu cores.
+        description="Arguments for recording save method.",
+        title="Compress Job Save Kwargs",
+    )
+    compress_chunk_duration: str = Field(
+        default="1s",
+        description="Duration to be used for chunks.",
+        title="Compress Chunk Duration",
+    )
 
-    def __int__(self, job_definition: TransformationJobConfig):
-        super().__init__(job_definition=job_definition)
+    # Scale settings
+    scale_num_chunks_per_segment: int = Field(
+        default=100,
+        description="Num of chunks per segment to scale.",
+        title="Scale Num Chunks Per Segment",
+    )
+    scale_chunk_size: int = Field(
+        default=10000,
+        description="Chunk size to scale.",
+        title="Scale Chunk Size",
+    )
 
-    def _get_read_blocks(self) -> Iterator:
+
+class EphysCompressionJob(GenericEtl[EphysJobSettings]):
+
+    def _get_read_blocks(self) -> Iterator[dict]:
         """
-        Given a reader name and input directory, generate a stream of
-        recording blocks.
+        Uses SpikeInterface to extract read blocks from the input source.
 
         Returns:
-            A generator of read blocks. A read_block is dict of
-            {'recording', 'experiment_name', 'stream_name'}.
+        Iterator[dict]
+            A generator of read blocks. A single read_block is dict with keys:
+            ('recording', 'experiment_name', 'stream_name')
 
         """
         nblocks = se.get_neo_num_blocks(
-            self._READER_NAME, self.job_configs.input_source
+            self.job_settings.reader_name.value, self.job_settings.input_source
         )
         stream_names, stream_ids = se.get_neo_streams(
-            self._READER_NAME, self.job_configs.input_source
+            self.job_settings.reader_name.value, self.job_settings.input_source
         )
         # load first stream to map block_indices to experiment_names
         rec_test = se.read_openephys(
-            self.job_configs.input_source,
+            self.job_settings.input_source,
             block_index=0,
             stream_name=stream_names[0],
         )
@@ -67,7 +125,7 @@ class EphysCompressionJob(TransformationJob):
         for block_index in range(nblocks):
             for stream_name in stream_names:
                 rec = se.read_openephys(
-                    self.job_configs.input_source,
+                    self.job_settings.input_source,
                     stream_name=stream_name,
                     block_index=block_index,
                     load_sync_timestamps=True,
@@ -80,11 +138,20 @@ class EphysCompressionJob(TransformationJob):
                     }
                 )
 
-    def _get_streams_to_clip(self) -> Iterator:
+    def _get_streams_to_clip(self) -> Iterator[dict]:
+        """
+        Returns
+        -------
+        Iterator[dict]
+          A list of dicts with information on which streams to clip.
+          The dictionary has keys ('data', 'relative_path_name', 'n_chan')
+          The 'data' is a numpy.memmap object.
+
+        """
         stream_names, stream_ids = se.get_neo_streams(
-            self._READER_NAME, self.job_configs.input_source
+            self.job_settings.reader_name.value, self.job_settings.input_source
         )
-        for dat_file in self.job_configs.input_source.glob("**/*.dat"):
+        for dat_file in self.job_settings.input_source.glob("**/*.dat"):
             oe_stream_name = dat_file.parent.name
             si_stream_name = [
                 stream_name
@@ -92,36 +159,37 @@ class EphysCompressionJob(TransformationJob):
                 if oe_stream_name in stream_name
             ][0]
             n_chan = se.read_openephys(
-                self.job_configs.input_source,
+                self.job_settings.input_source,
                 block_index=0,
                 stream_name=si_stream_name,
             ).get_num_channels()
             data = np.memmap(
-                str(dat_file), dtype="int16", order="C", mode="r"
+                filename=str(dat_file), dtype="int16", order="C", mode="r"
             ).reshape(-1, n_chan)
             yield {
                 "data": data,
                 "relative_path_name": str(
-                    dat_file.relative_to(self.job_configs.input_source)
+                    dat_file.relative_to(self.job_settings.input_source)
                 ),
                 "n_chan": n_chan,
             }
 
-    @staticmethod
-    def _get_compressor(compressor_name, **kwargs):
+    def _get_compressor(self) -> Union[Blosc, WavPack]:
         """
-        Retrieve a compressor for a given name and optional kwargs.
-        Args:
-            compressor_name (str): Matches one of the names Compressors enum
-            **kwargs (dict): Options to pass into the Compressor
-        Returns:
-            An instantiated compressor class.
+        Utility method to construct a compressor class.
+        Returns
+        -------
+        Union[Blosc, WavPack]
+          Either an instantiated Blosc or WavPack class.
+
         """
-        if compressor_name == CompressorName.BLOSC.value:
-            return Blosc(**kwargs)
-        elif compressor_name == CompressorName.WAVPACK.value:
-            return WavPack(**kwargs)
+        if self.job_settings.compressor_name == CompressorName.BLOSC:
+            return Blosc(**self.job_settings.compressor_kwargs)
+        elif self.job_settings.compressor_name == CompressorName.WAVPACK:
+            return WavPack(**self.job_settings.compressor_kwargs)
         else:
+            # TODO: This is validated during the construction of JobSettings,
+            #  so we can probably just remove this exception.
             raise Exception(
                 f"Unknown compressor. Please select one of "
                 f"{[c for c in CompressorName]}"
@@ -129,21 +197,31 @@ class EphysCompressionJob(TransformationJob):
 
     @staticmethod
     def _scale_read_blocks(
-        read_blocks,
-        num_chunks_per_segment=100,
-        chunk_size=10000,
+        read_blocks: Iterator[dict],
+        random_seed: Optional[int] = None,
+        num_chunks_per_segment: int = 100,
+        chunk_size: int = 10000,
     ):
         """
-        Scales a read_block. A read_block is dict of
-        {'recording', 'block_index', 'stream_name'}.
-        Args:
-            read_blocks (iterable): A generator of read_blocks
-            num_chunks_per_segment (int):
-            chunk_size (int):
-        Returns:
-            A generated scaled_read_block. A dict of
-            {'scaled_recording', 'block_index', 'stream_name'}.
+        Scales read_blocks. A single read_block is dict with keys:
+        ('recording', 'block_index', 'stream_name')
+        Parameters
+        ----------
+        read_blocks : Iterator[dict]
+          A single read_block is dict with keys:
+          ('recording', 'block_index', 'stream_name')
+        random_seed : Optional[int]
+          Optional seed for correct_lsb method. Default is None.
+        num_chunks_per_segment : int
+          Default is 100
+        chunk_size : int
+          Default is 10000
 
+        Returns
+        -------
+        Iterator[dict]
+          An iterator over read_blocks. A single read_block is dict with keys:
+          ('recording', 'block_index', 'stream_name')
         """
         for read_block in read_blocks:
             # We don't need to scale the NI-DAQ recordings
@@ -151,10 +229,14 @@ class EphysCompressionJob(TransformationJob):
             if RecordingBlockPrefixes.nidaq.value in read_block["stream_name"]:
                 rec_to_compress = read_block["recording"]
             else:
+                correct_lsb_args = {
+                    "num_chunks_per_segment": num_chunks_per_segment,
+                    "chunk_size": chunk_size,
+                }
+                if random_seed is not None:
+                    correct_lsb_args["seed"] = random_seed
                 rec_to_compress = spre.correct_lsb(
-                    read_block["recording"],
-                    num_chunks_per_segment=num_chunks_per_segment,
-                    chunk_size=chunk_size,
+                    read_block["recording"], **correct_lsb_args
                 )
             yield (
                 {
@@ -168,7 +250,7 @@ class EphysCompressionJob(TransformationJob):
         self,
         dst_dir: Path,
         stream_gen: Iterator[dict],
-    ):
+    ) -> None:
         """
         Copies the raw data to a new directory with the .dat files clipped to
         just a small number of frames. This allows someone to still use the
@@ -186,14 +268,14 @@ class EphysCompressionJob(TransformationJob):
         Returns
         -------
         None
-          Moves some directories around.
+          Side effect of copying a directory.
 
         """
 
         # first: copy everything except .dat files
         patterns_to_ignore = ["*.dat"]
         shutil.copytree(
-            self.job_configs.source,
+            self.job_settings.input_source,
             dst_dir,
             ignore=shutil.ignore_patterns(*patterns_to_ignore),
         )
@@ -203,14 +285,14 @@ class EphysCompressionJob(TransformationJob):
             rel_path_name = stream["relative_path_name"]
             n_chan = stream["n_chan"]
             dst_raw_file = dst_dir / rel_path_name
-            dst_data = memmap(
-                dst_raw_file,
+            dst_data = np.memmap(
+                filename=dst_raw_file,
                 dtype="int16",
-                shape=(self.job_configs.clip_n_frames, n_chan),
+                shape=(self.job_settings.clip_n_frames, n_chan),
                 order="C",
                 mode="w+",
             )
-            dst_data[:] = data[: self.job_configs.clip_n_frames]
+            dst_data[:] = data[: self.job_settings.clip_n_frames]
 
     @staticmethod
     def _compress_and_write_block(
@@ -273,18 +355,12 @@ class EphysCompressionJob(TransformationJob):
         # Correct NP-opto electrode positions:
         # correction is skipped if Neuropix-PXI version > 0.4.0
         # It'd be nice if the original data wasn't modified.
-        correct_np_opto_electrode_locations(self.job_configs.source)
+        correct_np_opto_electrode_locations(self.job_settings.input_source)
         # Clip the data
         logging.info("Clipping source data. This may take a minute.")
-        if self.job_configs.number_id is None:
-            clipped_data_path = (
-                self.job_configs.output_directory / "ecephys_clipped"
-            )
-        else:
-            clipped_data_path = (
-                self.job_configs.output_directory
-                / f"ecephys_clipped{self.job_configs.number_id}"
-            )
+        clipped_data_path = (
+            self.job_settings.output_directory / "ecephys_clipped"
+        )
         streams_to_clip = self._get_streams_to_clip()
         self._copy_and_clip_data(
             dst_dir=clipped_data_path,
@@ -295,36 +371,28 @@ class EphysCompressionJob(TransformationJob):
 
         # Compress the data
         logging.info("Compressing source data.")
-        if self.job_configs.number_id is None:
-            compressed_data_path = (
-                self.job_configs.output_directory / "ecephys_compressed"
-            )
-        else:
-            compressed_data_path = (
-                self.job_configs.output_directory
-                / f"ecephys_compressed{self.job_configs.number_id}"
-            )
-        read_blocks = self._get_read_blocks()
-        compressor = self._get_compressor(
-            self.job_configs.compressor_name.value,
-            **self.job_configs.compressor_kwargs,
+        compressed_data_path = (
+            self.job_settings.output_directory / "ecephys_compressed"
         )
+        read_blocks = self._get_read_blocks()
+        compressor = self._get_compressor()
         scaled_read_blocks = self._scale_read_blocks(
             read_blocks=read_blocks,
+            random_seed=self.job_settings.random_seed,
             num_chunks_per_segment=(
-                self.job_configs.scale_num_chunks_per_segment
+                self.job_settings.scale_num_chunks_per_segment
             ),
-            chunk_size=self.job_configs.scale_chunk_size,
+            chunk_size=self.job_settings.scale_chunk_size,
         )
         self._compress_and_write_block(
             read_blocks=scaled_read_blocks,
             compressor=compressor,
             max_windows_filename_len=(
-                self.job_configs.compress_max_windows_filename_len
+                self.job_settings.compress_max_windows_filename_len
             ),
             output_dir=compressed_data_path,
-            output_format=self.job_configs.compress_write_output_format,
-            job_kwargs=self.job_configs.compress_job_save_kwargs,
+            output_format=self.job_settings.compress_write_output_format,
+            job_kwargs=self.job_settings.compress_job_save_kwargs,
         )
         logging.info("Finished compressing source data.")
 
@@ -335,5 +403,7 @@ class EphysCompressionJob(TransformationJob):
         self._compress_raw_data()
         job_end_time = datetime.now()
         return JobResponse(
-            message=f"Job finished in: {job_end_time-job_start_time}"
+            status_code=200,
+            message=f"Job finished in: {job_end_time-job_start_time}",
+            data=None,
         )
