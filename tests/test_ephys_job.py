@@ -41,7 +41,7 @@ class TestEphysJob(unittest.TestCase):
         cls.basic_job = EphysCompressionJob(job_settings=basic_job_settings)
 
     @patch("warnings.warn")
-    def test_get_compressor_default(self, mock_log_warn: MagicMock):
+    def test_get_compressor_default(self, _: MagicMock):
         """Tests _get_compressor_default method with default settings."""
         compressor = self.basic_job._get_compressor()
         expected_default = WavPack(
@@ -53,11 +53,9 @@ class TestEphysJob(unittest.TestCase):
             shaping_weight=0.0,
         )
         self.assertEqual(expected_default, compressor)
-        # If we upgrade WavPack, we can remove this assertion
-        mock_log_warn.assert_called()
 
     @patch("warnings.warn")
-    def test_get_compressor_wavpack(self, mock_log_warn: MagicMock):
+    def test_get_compressor_wavpack(self, _: MagicMock):
         """Tests _get_compressor_default method with WavPack settings."""
         compressor_kwargs = {
             "level": 4,
@@ -79,8 +77,6 @@ class TestEphysJob(unittest.TestCase):
             shaping_weight=0.0,
         )
         self.assertEqual(expected_compressor, compressor)
-        # If we upgrade WavPack, we can remove this assertion
-        mock_log_warn.assert_called()
 
     def test_get_compressor_blosc(self):
         """Tests _get_compressor_default method with Blosc settings."""
@@ -477,7 +473,7 @@ class TestEphysJob(unittest.TestCase):
         self,
         mock_scale_save: MagicMock,
         mock_bin_save: MagicMock,
-        mock_log_warn: MagicMock,
+        _: MagicMock,
     ):
         """Tests _compress_and_write_block method with scaled rec"""
         read_blocks = self.basic_job._get_read_blocks()
@@ -694,8 +690,6 @@ class TestEphysJob(unittest.TestCase):
                 ),
             ]
         )
-        # If we upgrade WavPack, we can remove this assertion
-        mock_log_warn.assert_called()
 
     @patch("warnings.warn")
     @patch(
@@ -705,7 +699,7 @@ class TestEphysJob(unittest.TestCase):
     def test_compress_and_write_read_blocks(
         self,
         mock_bin_save: MagicMock,
-        mock_log_warn: MagicMock,
+        _: MagicMock,
     ):
         """Tests _compress_and_write_block method with raw rec"""
         read_blocks = self.basic_job._get_read_blocks()
@@ -912,8 +906,6 @@ class TestEphysJob(unittest.TestCase):
                 ),
             ]
         )
-        # If we upgrade WavPack, we can remove this assertion
-        mock_log_warn.assert_called()
 
     @patch("os.cpu_count")
     @patch("warnings.warn")
@@ -924,7 +916,7 @@ class TestEphysJob(unittest.TestCase):
     def test_compress_and_write_read_blocks_cpu_count(
         self,
         mock_bin_save: MagicMock,
-        mock_log_warn: MagicMock,
+        _: MagicMock,
         mock_os_cpu_count: MagicMock,
     ):
         """Tests _compress_and_write_block method with n_jobs set to -1"""
@@ -949,8 +941,6 @@ class TestEphysJob(unittest.TestCase):
             job_kwargs={"n_jobs": -1},
         )
         self.assertEqual(9, len(mock_bin_save.mock_calls))
-        # If we upgrade WavPack, we can remove this assertion
-        mock_log_warn.assert_called()
 
     @patch("warnings.warn")
     @patch(
@@ -962,7 +952,7 @@ class TestEphysJob(unittest.TestCase):
         self,
         mock_platform: MagicMock,
         mock_bin_save: MagicMock,
-        mock_log_warn: MagicMock,
+        _: MagicMock,
     ):
         """Tests _compress_and_write_block method when filename is too long
         for Windows OS"""
@@ -992,7 +982,6 @@ class TestEphysJob(unittest.TestCase):
             e.exception.args,
         )
         mock_bin_save.assert_not_called()
-        mock_log_warn.assert_called()
 
     @patch("warnings.warn")
     @patch(
@@ -1009,11 +998,10 @@ class TestEphysJob(unittest.TestCase):
         mock_log_info: MagicMock,
         mock_copy_and_clip_data: MagicMock,
         mock_compress_and_write_block: MagicMock,
-        mock_log_warn: MagicMock,
+        _: MagicMock,
     ):
         """Tests _compress_raw_data method with basic job"""
         self.basic_job._compress_raw_data()
-        mock_log_warn.assert_called()
         settings1_path = DATA_DIR / "Record Node 101" / "settings.xml"
         settings3_path = DATA_DIR / "Record Node 101" / "settings_3.xml"
         settings6_path = DATA_DIR / "Record Node 101" / "settings_6.xml"
