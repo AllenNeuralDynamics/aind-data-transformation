@@ -1,7 +1,10 @@
+"""Module to handle ephys data compression"""
+
 import logging
 import os
 import platform
 import shutil
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Iterator, Literal, Optional, Union
@@ -13,7 +16,7 @@ from pydantic import Field
 from spikeinterface import extractors as se
 from wavpack_numcodecs import WavPack
 
-from aind_data_transformation.core import GenericEtl, JobResponse
+from aind_data_transformation.core import GenericEtl, JobResponse, get_parser
 from aind_data_transformation.ephys.models import (
     CompressorName,
     ReaderName,
@@ -26,6 +29,7 @@ from aind_data_transformation.models import TransformationJobConfig
 
 
 class EphysJobSettings(TransformationJobConfig):
+    """EphysCompressionJob settings."""
 
     # reader settings
     reader_name: ReaderName = Field(
@@ -91,6 +95,7 @@ class EphysJobSettings(TransformationJobConfig):
 
 
 class EphysCompressionJob(GenericEtl[EphysJobSettings]):
+    """Main class to handle ephys data compression"""
 
     def _get_read_blocks(self) -> Iterator[dict]:
         """
@@ -221,7 +226,7 @@ class EphysCompressionJob(GenericEtl[EphysJobSettings]):
         -------
         Iterator[dict]
           An iterator over read_blocks. A single read_block is dict with keys:
-          ('recording', 'block_index', 'stream_name')
+          ('scale_recording', 'block_index', 'stream_name')
         """
         for read_block in read_blocks:
             # We don't need to scale the NI-DAQ recordings
@@ -261,14 +266,13 @@ class EphysCompressionJob(GenericEtl[EphysJobSettings]):
           Desired location for clipped data set
         stream_gen : Iterator[dict]
           An Iterator where each item is a dictionary with shape,
-            'data': memmap(dat file),
-              'relative_path_name': path name of raw data
-                to new dir correctly
-              'n_chan': number of channels.
+          ('data': memmap(dat file),
+          'relative_path_name': path name of raw data to new dir correctly
+          'n_chan': number of channels)
         Returns
         -------
         None
-          Side effect of copying a directory.
+          None. Copies clipped *.dat files to a new directory.
 
         """
 
@@ -297,27 +301,37 @@ class EphysCompressionJob(GenericEtl[EphysJobSettings]):
     @staticmethod
     def _compress_and_write_block(
         read_blocks: Iterator[dict],
-        compressor,
-        output_dir,
+        compressor: Union[WavPack, Blosc],
+        output_dir: Path,
         job_kwargs: dict,
         max_windows_filename_len: int,
         output_format: str = "zarr",
-    ):
+    ) -> None:
         """
         Compress and write read_blocks.
-        Args:
-            read_blocks (iterable dict):
-              Either [{'recording', 'block_index', 'stream_name'}] or
-              [{'scale_recording', 'block_index', 'stream_name'}].
-            compressor (obj): A compressor class
-            output_dir (Path): Output directory to write compressed data
-            job_kwargs (dict): Recording save job kwargs.
-            output_format (str): Defaults to zarr
-            max_windows_filename_len (int): Warn if base file names are larger
-              than this.
 
-        Returns:
-            Nothing. Writes data to a folder.
+        Parameters
+        ----------
+        read_blocks : Iterator[dict]
+          Either [{'recording', 'block_index', 'stream_name'},...] or
+          [{'scale_recording', 'block_index', 'stream_name'},...]
+        compressor : Union[WavPack, Blosc]
+        output_dir : Path
+          Output directory to write compressed data
+        job_kwargs : dict
+          Recording save job kwargs
+        max_windows_filename_len : int
+          Windows OS has a maximum filename length. If the root directory is
+          deeply nested, the zarr filenames might be too long for Windows.
+          This is added as an arg, so we can raise better error messages.
+        output_format : str
+          Default is zarr
+
+        Returns
+        -------
+        None
+          Writes data to a folder.
+
         """
         if job_kwargs["n_jobs"] == -1:
             job_kwargs["n_jobs"] = os.cpu_count()
@@ -348,9 +362,7 @@ class EphysCompressionJob(GenericEtl[EphysJobSettings]):
             )
 
     def _compress_raw_data(self) -> None:
-        """If compress data is set to False, the data will be uploaded to s3.
-        Otherwise, it will be compressed to zarr, stored in temp_dir, and
-        uploaded later."""
+        """Compresses ephys data"""
 
         # Correct NP-opto electrode positions:
         # correction is skipped if Neuropix-PXI version > 0.4.0
@@ -399,6 +411,14 @@ class EphysCompressionJob(GenericEtl[EphysJobSettings]):
         return None
 
     def run_job(self) -> JobResponse:
+        """
+        Main public method to run the compression job
+        Returns
+        -------
+        JobResponse
+          Information about the job that can be used for metadata downstream.
+
+        """
         job_start_time = datetime.now()
         self._compress_raw_data()
         job_end_time = datetime.now()
@@ -407,3 +427,21 @@ class EphysCompressionJob(GenericEtl[EphysJobSettings]):
             message=f"Job finished in: {job_end_time-job_start_time}",
             data=None,
         )
+
+
+if __name__ == "__main__":
+    sys_args = sys.argv[1:]
+    parser = get_parser()
+    cli_args = parser.parse_args(sys_args)
+    if cli_args.job_settings is not None:
+        job_settings = EphysJobSettings.model_validate_json(
+            cli_args.job_settings
+        )
+    elif cli_args.config_file is not None:
+        job_settings = EphysJobSettings.from_config_file(cli_args.config_file)
+    else:
+        # Construct settings from env vars
+        job_settings = EphysJobSettings()
+    job = EphysCompressionJob(job_settings=job_settings)
+    job_response = job.run_job()
+    logging.info(job_response.model_dump_json())

@@ -1,3 +1,5 @@
+"""Helpful models used in the ephys compression job"""
+
 from enum import Enum
 
 from numcodecs import Blosc

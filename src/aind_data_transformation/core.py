@@ -1,6 +1,8 @@
 """Core abstract class that can be used as a template for etl jobs."""
 
+import argparse
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Generic, Optional, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -8,6 +10,41 @@ from pydantic import BaseModel, ConfigDict, Field
 from aind_data_transformation.models import TransformationJobConfig
 
 _T = TypeVar("_T", bound=TransformationJobConfig)
+
+
+def get_parser() -> argparse.ArgumentParser:
+    """
+    Get a standard parser that can be used to parse command line args
+    Returns
+    -------
+    argparse.ArgumentParser
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-j",
+        "--job-settings",
+        required=False,
+        type=str,
+        help=(
+            r"""
+            Instead of init args the job settings can optionally be passed in
+            as a json string in the command line.
+            """
+        ),
+    )
+    parser.add_argument(
+        "-c",
+        "--config-file",
+        required=False,
+        type=Path,
+        help=(
+            r"""
+            Instead of init args the job settings can optionally be loaded from
+            a config file.
+            """
+        ),
+    )
+    return parser
 
 
 class JobResponse(BaseModel):

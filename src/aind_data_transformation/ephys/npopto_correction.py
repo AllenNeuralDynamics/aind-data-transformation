@@ -1,6 +1,9 @@
+"""Module to handle np_opto xml settings corrections."""
+
 import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Dict, Tuple, Union
 
 import numpy as np
 from packaging.version import parse
@@ -12,7 +15,15 @@ Y_PITCH = 20
 NUMEL_IN_COL = 192
 
 
-def get_standard_np_opto_electrode_positions():
+def get_standard_np_opto_electrode_positions() -> (
+    Tuple[Dict[str, str], Dict[str, str]]
+):
+    """
+    Get the standard positions for the np_opto electrodes
+    Returns
+    -------
+    Tuple[Dict[str, str], Dict[str, str]]
+    """
     npopto_electrode_xpos_arr = [X_OFFSET, X_OFFSET + X_PITCH] * NUMEL_IN_COL
     npopto_electrode_ypos_arr = np.concatenate(
         [i * np.array([Y_PITCH, Y_PITCH]) for i in range(NUMEL_IN_COL)]
@@ -27,7 +38,23 @@ def get_standard_np_opto_electrode_positions():
     return npopto_electrode_xpos, npopto_electrode_ypos
 
 
-def correct_np_opto_electrode_locations(input_dir):
+def correct_np_opto_electrode_locations(input_dir: Union[str, Path]) -> None:
+    """
+
+    Parameters
+    ----------
+    input_dir : str
+    Directory location of experimental data root. The xml files located under
+    this directory will be checked if Neuropix-PXI <= v0.4.0 is used. This
+    method will copy the original file to settings.xml.wrong and modify
+    the original file to use the correct np_opto_positions.
+
+    Returns
+    -------
+    None
+      Modifies the settings.xml file and copies it to a new location.
+
+    """
     # find settings files
     input_dir = Path(input_dir)
     settings_files = list(input_dir.glob("**/*.xml"))

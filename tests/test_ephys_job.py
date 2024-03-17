@@ -1,4 +1,4 @@
-"""Tests for the ephys module"""
+"""Tests for the ephys package"""
 
 import json
 import os
@@ -27,9 +27,11 @@ NP_OPTO_CORRECT_DIR = TEST_DIR / "np_opto_corrections"
 
 
 class TestEphysJob(unittest.TestCase):
+    """Tests for ephys_job module"""
 
     @classmethod
     def setUpClass(cls):
+        """Setup basic job settings and job that can be used across tests"""
         basic_job_settings = EphysJobSettings(
             input_source=DATA_DIR,
             output_directory=Path("output_dir"),
@@ -40,6 +42,7 @@ class TestEphysJob(unittest.TestCase):
 
     @patch("warnings.warn")
     def test_get_compressor_default(self, mock_log_warn: MagicMock):
+        """Tests _get_compressor_default method with default settings."""
         compressor = self.basic_job._get_compressor()
         expected_default = WavPack(
             bps=0,
@@ -55,6 +58,7 @@ class TestEphysJob(unittest.TestCase):
 
     @patch("warnings.warn")
     def test_get_compressor_wavpack(self, mock_log_warn: MagicMock):
+        """Tests _get_compressor_default method with WavPack settings."""
         compressor_kwargs = {
             "level": 4,
         }
@@ -79,6 +83,7 @@ class TestEphysJob(unittest.TestCase):
         mock_log_warn.assert_called()
 
     def test_get_compressor_blosc(self):
+        """Tests _get_compressor_default method with Blosc settings."""
         compressor_kwargs = {
             "clevel": 4,
         }
@@ -94,6 +99,7 @@ class TestEphysJob(unittest.TestCase):
         self.assertEqual(expected_compressor, compressor)
 
     def test_get_compressor_error(self):
+        """Tests _get_compressor_default method with unknown compressor."""
 
         etl_job = EphysCompressionJob(
             job_settings=EphysJobSettings.model_construct(
@@ -111,6 +117,7 @@ class TestEphysJob(unittest.TestCase):
         self.assertEqual(expected_error_message, e.exception.args)
 
     def test_get_read_blocks(self):
+        """Tests _get_read_blocks method"""
         read_blocks = self.basic_job._get_read_blocks()
         # Instead of constructing OpenEphysBinaryRecordingExtractor to
         # compare against, we can just compare the repr of the classes
@@ -181,6 +188,7 @@ class TestEphysJob(unittest.TestCase):
         self.assertEqual(expected_read_blocks, read_blocks_repr)
 
     def test_scale_read_blocks(self):
+        """Tests _scale_read_blocks method"""
         read_blocks = self.basic_job._get_read_blocks()
         scaled_read_blocks = self.basic_job._scale_read_blocks(
             read_blocks=read_blocks,
@@ -261,6 +269,7 @@ class TestEphysJob(unittest.TestCase):
         self.assertEqual(expected_scaled_read_blocks, scaled_read_blocks_repr)
 
     def test_get_streams_to_clip(self):
+        """Tests _get_streams_to_clip method"""
         streams_to_clip = self.basic_job._get_streams_to_clip()
         # TODO: If we want finer granularity, we can compare the numpy.memmap
         #  directly instead of just checking their shape
@@ -358,6 +367,7 @@ class TestEphysJob(unittest.TestCase):
         mock_ignore_patterns: MagicMock,
         mock_copy_tree: MagicMock,
     ):
+        """Tests _copy_and_clip_data method"""
         mock_ignore_patterns.return_value = ["*.dat"]
 
         def base_path(num: int) -> Path:
@@ -469,6 +479,7 @@ class TestEphysJob(unittest.TestCase):
         mock_bin_save: MagicMock,
         mock_log_warn: MagicMock,
     ):
+        """Tests _compress_and_write_block method with scaled rec"""
         read_blocks = self.basic_job._get_read_blocks()
         scaled_read_blocks = self.basic_job._scale_read_blocks(
             read_blocks=read_blocks,
@@ -696,6 +707,7 @@ class TestEphysJob(unittest.TestCase):
         mock_bin_save: MagicMock,
         mock_log_warn: MagicMock,
     ):
+        """Tests _compress_and_write_block method with raw rec"""
         read_blocks = self.basic_job._get_read_blocks()
         compressor = self.basic_job._get_compressor()
         max_windows_filename_len = (
@@ -915,6 +927,7 @@ class TestEphysJob(unittest.TestCase):
         mock_log_warn: MagicMock,
         mock_os_cpu_count: MagicMock,
     ):
+        """Tests _compress_and_write_block method with n_jobs set to -1"""
         mock_os_cpu_count.return_value = 1
         read_blocks = self.basic_job._get_read_blocks()
         compressor = self.basic_job._get_compressor()
@@ -951,6 +964,8 @@ class TestEphysJob(unittest.TestCase):
         mock_bin_save: MagicMock,
         mock_log_warn: MagicMock,
     ):
+        """Tests _compress_and_write_block method when filename is too long
+        for Windows OS"""
         mock_platform.return_value = "Windows"
         read_blocks = self.basic_job._get_read_blocks()
         compressor = self.basic_job._get_compressor()
@@ -996,6 +1011,7 @@ class TestEphysJob(unittest.TestCase):
         mock_compress_and_write_block: MagicMock,
         mock_log_warn: MagicMock,
     ):
+        """Tests _compress_raw_data method with basic job"""
         self.basic_job._compress_raw_data()
         mock_log_warn.assert_called()
         settings1_path = DATA_DIR / "Record Node 101" / "settings.xml"
@@ -1059,6 +1075,7 @@ class TestEphysJob(unittest.TestCase):
     def test_run_job(
         self, mock_compress_raw_data: MagicMock, mock_datetime: MagicMock
     ):
+        """Tests run_job method"""
         mock_start_time = datetime(2020, 10, 10, 1, 30, 0)
         mock_end_time = datetime(2020, 10, 10, 5, 25, 17)
         mock_time_delta = mock_end_time - mock_start_time
@@ -1077,14 +1094,17 @@ class TestEphysJob(unittest.TestCase):
 
 
 class TestNpOptoCorrection(unittest.TestCase):
+    """Tests npopto_corrections module"""
 
     @classmethod
     def setUpClass(cls):
+        """Read in the standard positions."""
         with open(NP_OPTO_CORRECT_DIR / "standard_positions.json", "r") as f:
             standard_positions = json.load(f)
         cls.standard_positions = standard_positions
 
     def test_get_standard_np_opto_electrode_positions(self):
+        """Tests get_standard_np_opto_electrode_positions class"""
         output = get_standard_np_opto_electrode_positions()
         self.assertEqual(self.standard_positions, list(output))
 
@@ -1097,6 +1117,8 @@ class TestNpOptoCorrection(unittest.TestCase):
         mock_rename: MagicMock,
         mock_write: MagicMock,
     ):
+        """Tests correct_np_opto_electrode_locations method when no
+        Neuropix-PXI is found in xml file"""
         correct_np_opto_electrode_locations(
             input_dir=NP_OPTO_CORRECT_DIR / "settings_altered_no_pxi"
         )
@@ -1113,6 +1135,8 @@ class TestNpOptoCorrection(unittest.TestCase):
         mock_rename: MagicMock,
         mock_write: MagicMock,
     ):
+        """Tests correct_np_opto_electrode_locations method when no np_opto
+        probes are found"""
         settings_dir = NP_OPTO_CORRECT_DIR / "settings_2023_04"
         correct_np_opto_electrode_locations(input_dir=settings_dir)
         mock_log_info.assert_called_once_with(
@@ -1130,6 +1154,8 @@ class TestNpOptoCorrection(unittest.TestCase):
         mock_rename: MagicMock,
         mock_write: MagicMock,
     ):
+        """Tests correct_np_opto_electrode_locations method when the
+        neuropixel version is 0.4.1"""
         correct_np_opto_electrode_locations(
             input_dir=NP_OPTO_CORRECT_DIR / "settings_2024_01"
         )
@@ -1146,6 +1172,8 @@ class TestNpOptoCorrection(unittest.TestCase):
         mock_rename: MagicMock,
         mock_write: MagicMock,
     ):
+        """Tests correct_np_opto_electrode_locations method when the
+        neuropixel version is 0.4.0"""
         settings_dir = NP_OPTO_CORRECT_DIR / "settings_2022_07"
         correct_np_opto_electrode_locations(
             input_dir=NP_OPTO_CORRECT_DIR / "settings_2022_07"
