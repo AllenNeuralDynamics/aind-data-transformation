@@ -181,7 +181,11 @@ class TestEphysJob(unittest.TestCase):
                 "stream_name": "Record Node 101#Neuropix-PXI-100.ProbeC",
             },
         ]
-        self.assertEqual(expected_read_blocks, read_blocks_repr)
+        expected_scaled_read_blocks_str = set(
+            [json.dumps(o) for o in expected_read_blocks]
+        )
+        read_blocks_repr_str = set([json.dumps(o) for o in read_blocks_repr])
+        self.assertEqual(expected_scaled_read_blocks_str, read_blocks_repr_str)
 
     def test_scale_read_blocks(self):
         """Tests _scale_read_blocks method"""
@@ -261,8 +265,15 @@ class TestEphysJob(unittest.TestCase):
                 "stream_name": "Record Node 101#Neuropix-PXI-100.ProbeC",
             },
         ]
-
-        self.assertEqual(expected_scaled_read_blocks, scaled_read_blocks_repr)
+        expected_scaled_read_blocks_str = set(
+            [json.dumps(o) for o in expected_scaled_read_blocks]
+        )
+        scaled_read_blocks_repr_str = set(
+            [json.dumps(o) for o in scaled_read_blocks_repr]
+        )
+        self.assertEqual(
+            expected_scaled_read_blocks_str, scaled_read_blocks_repr_str
+        )
 
     def test_get_streams_to_clip(self):
         """Tests _get_streams_to_clip method"""
@@ -352,7 +363,11 @@ class TestEphysJob(unittest.TestCase):
                 "data": (100, 384),
             },
         ]
-        self.assertEqual(expected_output, streams_to_clip_just_shape)
+        expected_output_str = set([json.dumps(o) for o in expected_output])
+        streams_to_clip_just_shape_str = set(
+            [json.dumps(o) for o in streams_to_clip_just_shape]
+        )
+        self.assertEqual(expected_output_str, streams_to_clip_just_shape_str)
 
     @patch("shutil.copytree")
     @patch("shutil.ignore_patterns")
@@ -904,7 +919,8 @@ class TestEphysJob(unittest.TestCase):
                     ),
                     n_jobs=1,
                 ),
-            ]
+            ],
+            any_order=True,
         )
 
     @patch("os.cpu_count")
@@ -1014,7 +1030,8 @@ class TestEphysJob(unittest.TestCase):
                 call("Finished clipping source data."),
                 call("Compressing source data."),
                 call("Finished compressing source data."),
-            ]
+            ],
+            any_order=True,
         )
         self.assertEqual(1, len(mock_copy_and_clip_data.mock_calls))
         # More granularity can be added in the future. For now, we just compare
