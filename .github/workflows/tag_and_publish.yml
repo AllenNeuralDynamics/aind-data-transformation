@@ -107,6 +107,7 @@ jobs:
           cd ..
       - name: Build sif container
         run: |
+          ls
           mkdir aind-data-transformation/build
           sudo singularity build aind-data-transformation/build/container.sif aind-data-transformation/scripts/singularity_build.def
       - name: Login and Deploy Container
