@@ -77,7 +77,8 @@ jobs:
         id: go
       - name: Install Dependencies
         run: |
-          apt-get update && apt-get install -y \
+        run: |
+          sudo apt-get update && sudo apt-get install -y \
             build-essential \
             libssl-dev \
             uuid-dev \
@@ -91,7 +92,7 @@ jobs:
           GOPATH: /tmp/go
         run: |
           mkdir -p $GOPATH
-          mkdir -p /usr/local/var/singularity/mnt && \
+          sudo mkdir -p /usr/local/var/singularity/mnt && \
           mkdir -p $GOPATH/src/github.com/sylabs && \
           cd $GOPATH/src/github.com/sylabs && \
           wget -qO- https://github.com/sylabs/singularity/releases/download/v${SINGULARITY_VERSION}/singularity-ce-${SINGULARITY_VERSION}.tar.gz | \
@@ -99,11 +100,11 @@ jobs:
           cd singularity-ce-${SINGULARITY_VERSION} && \
           ./mconfig -p /usr/local && \
           make -C builddir && \
-          make -C builddir install
+          sudo make -C builddir install
       - name: Build sif container
         run: |
           mkdir aind-data-transformation/build
-          singularity build aind-data-transformation/build/container.sif aind-data-transformation/scripts/singularity_build.def
+          sudo singularity build aind-data-transformation/build/container.sif aind-data-transformation/scripts/singularity_build.def
       - name: Login and Deploy Container
         run: |
           echo ${{ secrets.GITHUB_TOKEN }} | singularity remote login -u ${{ github.actor }} --password-stdin oras://ghcr.io
