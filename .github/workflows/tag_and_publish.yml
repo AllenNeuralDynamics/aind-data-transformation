@@ -77,7 +77,6 @@ jobs:
         id: go
       - name: Install Dependencies
         run: |
-        run: |
           sudo apt-get update && sudo apt-get install -y \
             build-essential \
             libssl-dev \
