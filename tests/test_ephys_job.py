@@ -521,7 +521,7 @@ class TestEphysJob(unittest.TestCase):
             [
                 call(
                     format="zarr",
-                    zarr_path=(
+                    folder=(
                         Path("output_dir")
                         / "compressed"
                         / (
@@ -541,7 +541,7 @@ class TestEphysJob(unittest.TestCase):
                 ),
                 call(
                     format="zarr",
-                    zarr_path=(
+                    folder=(
                         Path("output_dir")
                         / "compressed"
                         / (
@@ -561,7 +561,7 @@ class TestEphysJob(unittest.TestCase):
                 ),
                 call(
                     format="zarr",
-                    zarr_path=(
+                    folder=(
                         Path("output_dir")
                         / "compressed"
                         / (
@@ -585,7 +585,7 @@ class TestEphysJob(unittest.TestCase):
             [
                 call(
                     format="zarr",
-                    zarr_path=(
+                    folder=(
                         Path("output_dir")
                         / "compressed"
                         / (
@@ -605,7 +605,7 @@ class TestEphysJob(unittest.TestCase):
                 ),
                 call(
                     format="zarr",
-                    zarr_path=(
+                    folder=(
                         Path("output_dir")
                         / "compressed"
                         / (
@@ -625,7 +625,7 @@ class TestEphysJob(unittest.TestCase):
                 ),
                 call(
                     format="zarr",
-                    zarr_path=(
+                    folder=(
                         Path("output_dir")
                         / "compressed"
                         / (
@@ -645,7 +645,7 @@ class TestEphysJob(unittest.TestCase):
                 ),
                 call(
                     format="zarr",
-                    zarr_path=(
+                    folder=(
                         Path("output_dir")
                         / "compressed"
                         / (
@@ -665,7 +665,7 @@ class TestEphysJob(unittest.TestCase):
                 ),
                 call(
                     format="zarr",
-                    zarr_path=(
+                    folder=(
                         Path("output_dir")
                         / "compressed"
                         / (
@@ -685,7 +685,7 @@ class TestEphysJob(unittest.TestCase):
                 ),
                 call(
                     format="zarr",
-                    zarr_path=(
+                    folder=(
                         Path("output_dir")
                         / "compressed"
                         / (
@@ -741,7 +741,7 @@ class TestEphysJob(unittest.TestCase):
             [
                 call(
                     format="zarr",
-                    zarr_path=(
+                    folder=(
                         Path("output_dir")
                         / "compressed"
                         / (
@@ -761,7 +761,7 @@ class TestEphysJob(unittest.TestCase):
                 ),
                 call(
                     format="zarr",
-                    zarr_path=(
+                    folder=(
                         Path("output_dir")
                         / "compressed"
                         / (
@@ -781,7 +781,7 @@ class TestEphysJob(unittest.TestCase):
                 ),
                 call(
                     format="zarr",
-                    zarr_path=(
+                    folder=(
                         Path("output_dir")
                         / "compressed"
                         / (
@@ -801,7 +801,7 @@ class TestEphysJob(unittest.TestCase):
                 ),
                 call(
                     format="zarr",
-                    zarr_path=(
+                    folder=(
                         Path("output_dir")
                         / "compressed"
                         / (
@@ -821,7 +821,7 @@ class TestEphysJob(unittest.TestCase):
                 ),
                 call(
                     format="zarr",
-                    zarr_path=(
+                    folder=(
                         Path("output_dir")
                         / "compressed"
                         / (
@@ -841,7 +841,7 @@ class TestEphysJob(unittest.TestCase):
                 ),
                 call(
                     format="zarr",
-                    zarr_path=(
+                    folder=(
                         Path("output_dir")
                         / "compressed"
                         / (
@@ -861,7 +861,7 @@ class TestEphysJob(unittest.TestCase):
                 ),
                 call(
                     format="zarr",
-                    zarr_path=(
+                    folder=(
                         Path("output_dir")
                         / "compressed"
                         / (
@@ -881,7 +881,7 @@ class TestEphysJob(unittest.TestCase):
                 ),
                 call(
                     format="zarr",
-                    zarr_path=(
+                    folder=(
                         Path("output_dir")
                         / "compressed"
                         / (
@@ -901,7 +901,7 @@ class TestEphysJob(unittest.TestCase):
                 ),
                 call(
                     format="zarr",
-                    zarr_path=(
+                    folder=(
                         Path("output_dir")
                         / "compressed"
                         / (
