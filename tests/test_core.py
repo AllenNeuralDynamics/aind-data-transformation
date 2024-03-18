@@ -5,8 +5,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from aind_data_transformation.core import GenericEtl, JobResponse, get_parser, \
-    BasicJobSettings
+from aind_data_transformation.core import (
+    BasicJobSettings,
+    GenericEtl,
+    JobResponse,
+    get_parser,
+)
 
 TEST_DIR = Path(os.path.dirname(os.path.realpath(__file__))) / "resources"
 SETTINGS_FILE_PATH = TEST_DIR / "core_example_settings" / "settings.json"

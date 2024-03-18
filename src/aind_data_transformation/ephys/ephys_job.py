@@ -16,8 +16,12 @@ from pydantic import Field
 from spikeinterface import extractors as se
 from wavpack_numcodecs import WavPack
 
-from aind_data_transformation.core import GenericEtl, JobResponse, get_parser, \
-    BasicJobSettings
+from aind_data_transformation.core import (
+    BasicJobSettings,
+    GenericEtl,
+    JobResponse,
+    get_parser,
+)
 from aind_data_transformation.ephys.models import (
     CompressorName,
     ReaderName,
