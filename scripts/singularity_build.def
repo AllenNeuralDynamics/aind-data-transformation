@@ -1,0 +1,12 @@
+Bootstrap: docker
+From: python:3.10-bullseye
+Stage: build
+
+%setup
+    # Copy project directory into container
+    cp -R aind-data-transformation ${SINGULARITY_ROOTFS}/aind-data-transformation
+
+%post
+    cd ${SINGULARITY_ROOTFS}/aind-data-transformation
+    pip install .[ephys] --no-cache-dir
+    rm -rf ${SINGULARITY_ROOTFS}/aind-data-transformation
