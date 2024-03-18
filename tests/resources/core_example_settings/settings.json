@@ -1,0 +1,5 @@
+{
+   "input_source": "some_input_dir",
+   "output_directory": "some_output_dir",
+   "param": 2
+}
