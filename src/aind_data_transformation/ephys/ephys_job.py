@@ -16,7 +16,8 @@ from pydantic import Field
 from spikeinterface import extractors as se
 from wavpack_numcodecs import WavPack
 
-from aind_data_transformation.core import GenericEtl, JobResponse, get_parser
+from aind_data_transformation.core import GenericEtl, JobResponse, get_parser, \
+    BasicJobSettings
 from aind_data_transformation.ephys.models import (
     CompressorName,
     ReaderName,
@@ -25,10 +26,9 @@ from aind_data_transformation.ephys.models import (
 from aind_data_transformation.ephys.npopto_correction import (
     correct_np_opto_electrode_locations,
 )
-from aind_data_transformation.models import TransformationJobConfig
 
 
-class EphysJobSettings(TransformationJobConfig):
+class EphysJobSettings(BasicJobSettings):
     """EphysCompressionJob settings."""
 
     # reader settings

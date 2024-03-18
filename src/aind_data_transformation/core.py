@@ -1,15 +1,13 @@
 """Core abstract class that can be used as a template for etl jobs."""
 
 import argparse
+import json
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Generic, Optional, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
-
-from aind_data_transformation.models import TransformationJobConfig
-
-_T = TypeVar("_T", bound=TransformationJobConfig)
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -45,6 +43,31 @@ def get_parser() -> argparse.ArgumentParser:
         ),
     )
     return parser
+
+
+class BasicJobSettings(BaseSettings):
+    """Model to define Transformation Job Configs"""
+
+    model_config = SettingsConfigDict(env_prefix="TRANSFORMATION_JOB_")
+    input_source: Path
+    output_directory: Path
+
+    @classmethod
+    def from_config_file(cls, config_file_location: Path):
+        """
+        Utility method to create a class from a json file
+        Parameters
+        ----------
+        config_file_location : Path
+          Location of json file to read.
+
+        """
+        with open(config_file_location, "r") as f:
+            file_contents = json.load(f)
+        return cls.model_validate_json(json.dumps(file_contents))
+
+
+_T = TypeVar("_T", bound=BasicJobSettings)
 
 
 class JobResponse(BaseModel):

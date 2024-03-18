@@ -5,29 +5,61 @@
 [![semantic-release: angular](https://img.shields.io/badge/semantic--release-angular-e10079?logo=semantic-release)](https://github.com/semantic-release/semantic-release)
 ![Interrogate](https://img.shields.io/badge/interrogate-100.0%25-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen?logo=codecov)
-![Python](https://img.shields.io/badge/python->=3.7-blue?logo=python)
-
-
+![Python](https://img.shields.io/badge/python->=3.9-blue?logo=python)
 
 ## Usage
- - To use this template, click the green `Use this template` button and `Create new repository`.
- - After github initially creates the new repository, please wait an extra minute for the initialization scripts to finish organizing the repo.
- - To enable the automatic semantic version increments: in the repository go to `Settings` and `Collaborators and teams`. Click the green `Add people` button. Add `svc-aindscicomp` as an admin. Modify the file in `.github/workflows/tag_and_publish.yml` and remove the if statement in line 10. The semantic version will now be incremented every time a code is committed into the main branch.
- - To publish to PyPI, enable semantic versioning and uncomment the publish block in `.github/workflows/tag_and_publish.yml`. The code will now be published to PyPI every time the code is committed into the main branch.
- - The `.github/workflows/test_and_lint.yml` file will run automated tests and style checks every time a Pull Request is opened. If the checks are undesired, the `test_and_lint.yml` can be deleted. The strictness of the code coverage level, etc., can be modified by altering the configurations in the `pyproject.toml` file and the `.flake8` file.
 
-## Installation
-To use the software, in the root directory, run
-```bash
-pip install -e .
+There are 4 main ways to run a data transformation job:
+- from a python script
+- from the command line passing in the settings as a json string
+- from the command line pointing to a config file
+- from the command line with env vars
+
+Assuming `output_dir` exists:
+
+### From python
+```python
+from aind_data_transformation.ephys.ephys_job import EphysJobSettings, EphysCompressionJob
+from pathlib import Path
+
+input_source = Path("./tests/resources/v0.6.x_neuropixels_multiexp_multistream")
+output_dir = Path("output_dir")
+
+job_settings = EphysJobSettings(input_source=input_source, output_directory=output_dir)
+job = EphysCompressionJob(job_settings=job_settings)
+
+response = job.run_job()
 ```
 
-To develop the code, run
+### From the command line passing in settings as a json str
+```bash
+python -m aind_data_transformation.ephys.ephys_job --job-settings '{"input_source":"./tests/resources/v0.6.x_neuropixels_multiexp_multistream","output_directory":"output_dir"}'
+```
+
+### From the command line passing in settings via a config file
+```bash
+python -m aind_data_transformation.ephys.ephys_job --config-file configs.json
+```
+
+### From the command line passing in settings via environment variables
+```bash
+export TRANSFORMATION_JOB_INPUT_SOURCE="./tests/resources/v0.6.x_neuropixels_multiexp_multistream"
+export TRANSFORMATION_JOB_OUTPUT_DIRECTORY="output_dir"
+python -m aind_data_transformation.ephys.ephys_job
+```
+
+
+## Contributing
+
+The development dependencies can be installed with
 ```bash
 pip install -e .[dev]
 ```
 
-## Contributing
+### Adding a new transformation job
+Any new job needs a settings class that inherits the BasicJobSettings class. This requires the fields input_source and output_directory and makes it so that the env vars have the TRANSFORMATION_JOB prefix.
+
+Any new job needs to inherit the GenericEtl class. This requires that the main public method to execute is called `run_job` and returns a JobResponse.
 
 ### Linters and testing
 
@@ -88,13 +120,3 @@ The table below, from [semantic release](https://github.com/semantic-release/sem
 | `feat(pencil): add 'graphiteWidth' option`                                                                                                                                                       | ~~Minor~~ Feature Release                                                                                       |
 | `perf(pencil): remove graphiteWidth option`<br><br>`BREAKING CHANGE: The graphiteWidth option has been removed.`<br>`The default graphite width of 10mm is always used for performance reasons.` | ~~Major~~ Breaking Release <br /> (Note that the `BREAKING CHANGE: ` token must be in the footer of the commit) |
 
-### Documentation
-To generate the rst files source files for documentation, run
-```bash
-sphinx-apidoc -o doc_template/source/ src 
-```
-Then to create the documentation HTML files, run
-```bash
-sphinx-build -b html doc_template/source/ doc_template/build/html
-```
-More info on sphinx installation can be found [here](https://www.sphinx-doc.org/en/master/usage/installation.html).
