@@ -105,9 +105,9 @@ jobs:
           sudo ./mconfig --without-suid
           sudo make -C ./builddir
           sudo make -C ./builddir install
-          cd ..
       - name: Build sif container
         run: |
+          ls /
           ls
-          mkdir aind-data-transformation/build
-          sudo singularity build aind-data-transformation/build/container.sif aind-data-transformation/scripts/singularity_build.def
+          mkdir build
+          sudo singularity build build/container.sif scripts/singularity_build.def
