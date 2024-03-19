@@ -4,7 +4,7 @@ Stage: build
 
 %setup
     # Copy project directory into container
-    cp -R aind-data-transformation ${SINGULARITY_ROOTFS}/aind-data-transformation
+    cp -R . ${SINGULARITY_ROOTFS}/aind-data-transformation
 
 %post
     cd ${SINGULARITY_ROOTFS}/aind-data-transformation
