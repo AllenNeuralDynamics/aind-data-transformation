@@ -358,10 +358,12 @@ class EphysCompressionJob(GenericEtl[EphysJobSettings]):
                     f" and might lead to errors. Use a shorter destination "
                     f"path."
                 )
+            # compression for times is disabled
             _ = rec.save(
                 format=output_format,
                 folder=zarr_path,
                 compressor=compressor,
+                compressor_by_dataset=dict(times=None),
                 **job_kwargs,
             )
 
