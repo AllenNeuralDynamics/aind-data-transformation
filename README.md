@@ -9,43 +9,41 @@
 
 ## Usage
 
-There are 4 main ways to run a data transformation job:
-- from a python script
-- from the command line passing in the settings as a json string
-- from the command line pointing to a config file
-- from the command line with env vars
-
-Assuming `output_dir` exists:
-
-### From python
+Please import this package and extend the abstract base class to define a new transformation job
 ```python
-from aind_data_transformation.ephys.ephys_job import EphysJobSettings, EphysCompressionJob
-from pathlib import Path
+from aind_data_transformation.core import (
+    BasicJobSettings,
+    GenericEtl,
+    JobResponse,
+)
 
-input_source = Path("./tests/resources/v0.6.x_neuropixels_multiexp_multistream")
-output_dir = Path("output_dir")
+# An example JobSettings
+class NewTransformJobSettings(BasicJobSettings):
+  # Add extra fields needed, for example, a random seed
+  random_seed: Optional[int] = 0
 
-job_settings = EphysJobSettings(input_source=input_source, output_directory=output_dir)
-job = EphysCompressionJob(job_settings=job_settings)
+# An example EtlJob
+class NewTransformJob(GenericEtl[NewTransformJobSettings]):
 
-response = job.run_job()
-```
+    # This method needs to be defined
+    def run_job(self) -> JobResponse:
+        """
+        Main public method to run the transformation job
+        Returns
+        -------
+        JobResponse
+          Information about the job that can be used for metadata downstream.
 
-### From the command line passing in settings as a json str
-```bash
-python -m aind_data_transformation.ephys.ephys_job --job-settings '{"input_source":"./tests/resources/v0.6.x_neuropixels_multiexp_multistream","output_directory":"output_dir"}'
-```
+        """
+        job_start_time = datetime.now()
+        # Do something here
+        job_end_time = datetime.now()
+        return JobResponse(
+            status_code=200,
+            message=f"Job finished in: {job_end_time-job_start_time}",
+            data=None,
+        )
 
-### From the command line passing in settings via a config file
-```bash
-python -m aind_data_transformation.ephys.ephys_job --config-file configs.json
-```
-
-### From the command line passing in settings via environment variables
-```bash
-export TRANSFORMATION_JOB_INPUT_SOURCE="./tests/resources/v0.6.x_neuropixels_multiexp_multistream"
-export TRANSFORMATION_JOB_OUTPUT_DIRECTORY="output_dir"
-python -m aind_data_transformation.ephys.ephys_job
 ```
 
 
