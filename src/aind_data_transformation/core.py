@@ -9,6 +9,8 @@ from typing import Generic, Optional, TypeVar
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+PathLike = TypeVar("PathLike", str, Path)
+
 
 def get_parser() -> argparse.ArgumentParser:
     """
@@ -49,8 +51,8 @@ class BasicJobSettings(BaseSettings):
     """Model to define Transformation Job Configs"""
 
     model_config = SettingsConfigDict(env_prefix="TRANSFORMATION_JOB_")
-    input_source: Path
-    output_directory: Path
+    input_source: PathLike
+    output_directory: PathLike
 
     @classmethod
     def from_config_file(cls, config_file_location: Path):
@@ -92,7 +94,16 @@ class GenericEtl(ABC, Generic[_T]):
         job_settings : _T
           Generic type that is bound by the BaseSettings class.
         """
-        self.job_settings = job_settings
+        self.job_settings = job_settings.model_copy(deep=True)
+        # Parse str into Paths
+        if isinstance(self.job_settings.input_source, str):
+            self.job_settings.input_source = Path(
+                self.job_settings.input_source
+            )
+        if isinstance(self.job_settings.output_directory, str):
+            self.job_settings.output_directory = Path(
+                self.job_settings.output_directory
+            )
 
     @abstractmethod
     def run_job(self) -> JobResponse:
