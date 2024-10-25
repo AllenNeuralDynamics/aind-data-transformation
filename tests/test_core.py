@@ -48,11 +48,21 @@ class TestExampleEtl(unittest.TestCase):
         """Set up tests with basic job settings and etl job"""
         basic_settings = ExampleJobSettings(
             param=2,
-            input_source=Path("some_input_dir"),
-            output_directory=Path("some_output_dir"),
+            input_source="some_input_dir",
+            output_directory="some_output_dir",
         )
         cls.basic_settings = basic_settings
         cls.basic_job = ExampleJob(job_settings=basic_settings)
+
+    def test_settings_with_paths(self):
+        """Tests JobSettings can be set with Path types if desired."""
+        basic_settings = ExampleJobSettings(
+            param=2,
+            input_source=Path("some_input_dir"),
+            output_directory=Path("some_out_dir"),
+        )
+        self.assertEqual(Path("some_input_dir"), basic_settings.input_source)
+        self.assertEqual(Path("some_out_dir"), basic_settings.output_directory)
 
     def test_load_cli_args_json_str(self):
         """Tests loading json string defined in command line args"""
